@@ -5,14 +5,18 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
     <style>
         #leaflet-map { height: 900px; width: 100%; }
-        /* 實心綠色圓點樣式 */
-        .solid-circle { 
-            background-color: #28a745; /* 綠色背景 */
-            border-radius: 50%;      /* 圓形 */
-            border: 2px solid white;  /* 白色邊框增加質感 */
-            box-shadow: 0 0 5px rgba(0,0,0,0.5);
+        
+        /* 標記通用樣式 */
+        .marker-icon { 
+            border-radius: 50%; 
+            border: 2px solid white; 
+            box-shadow: 0 0 5px rgba(0,0,0,0.5); 
             pointer-events: none; 
         }
+        
+        /* 圓圈顏色定義 */
+        .solid-circle { background-color: #28a745; } /* 綠色 */
+        .yellow-circle { background-color: #ffc107; } /* 黃色 */
     </style>
 </head>
 <body>
@@ -37,6 +41,13 @@
         const greenLines = [['WTG02','WTG05'],['WTG05','WTG06'],['WTG06','WTG03'],['WTG03','WTG07'],['WTG07','WTG11'],['WTG11','WTG10'],['WTG22','WTG18'],['WTG23','WTG27'],['WTG27','WTG31'],['WTG31','WTG30'],['OSS','WTG10'],['OSS','WTG09']];
         const allConnections = [['WTG09','WTG08'],['WTG08','WTG04'],['WTG04','WTG01'],['WTG01','WTG02'],['WTG02','WTG05'],['WTG05','WTG06'],['WTG06','WTG03'],['WTG03','WTG07'],['WTG07','WTG11'],['WTG11','WTG10'],['WTG22','WTG18'],['WTG18','WTG14'],['WTG14','WTG15'],['WTG15','WTG19'],['WTG19','WTG23'],['WTG23','WTG27'],['WTG27','WTG31'],['WTG31','WTG30'],['WTG30','WTG26'],['WTG17','WTG13'],['WTG13','WTG12'],['WTG12','WTG16'],['WTG16','WTG20'],['WTG20','WTG24'],['WTG24','WTG28'],['WTG28','WTG29'],['WTG29','WTG25'],['WTG25','WTG21'],['OSS','WTG10'],['OSS','WTG09'],['OSS','WTG17'],['OSS','WTG21'],['OSS','WTG22'],['OSS','WTG26']];
 
+        // 標記設定檔
+        const markersConfig = {
+            'WTG28-WTG29': [{ratio: 0.1, cls: 'solid-circle'}, {ratio: 0.9, cls: 'solid-circle'}],
+            'WTG24-WTG28': [{ratio: 0.20, cls: 'yellow-circle'}, {ratio: 0.80, cls: 'yellow-circle'}],
+            'WTG20-WTG24': [{ratio: 0.80, cls: 'yellow-circle'}]
+        };
+
         function getOffsetPoint(p1, p2, ratio) {
             return [p1[0] + (p2[0] - p1[0]) * ratio, p1[1] + (p2[1] - p1[1]) * ratio];
         }
@@ -45,22 +56,23 @@
             const isGreen = greenLines.some(g => (g[0] === pair[0] && g[1] === pair[1]) || (g[0] === pair[1] && g[1] === pair[0]));
             const p1 = points[pair[0]], p2 = points[pair[1]];
 
+            // 繪製線段
             L.polyline([p1, p2], {
                 color: isGreen ? 'green' : 'black',
                 weight: 2,
                 dashArray: isGreen ? null : '5, 10'
             }).addTo(map);
 
-            if (!isGreen && (pair.includes('WTG28') && pair.includes('WTG29'))) {
-                const ratio = 0.15;
-                const nearP1 = getOffsetPoint(p1, p2, ratio);
-                const nearP2 = getOffsetPoint(p2, p1, ratio);
+            // 檢查標記設定
+            const key = pair.join('-');
+            const reverseKey = pair.slice().reverse().join('-');
+            const config = markersConfig[key] || markersConfig[reverseKey];
 
-                [nearP1, nearP2].forEach(pos => {
-                    L.marker(pos, {
-                        icon: L.divIcon({ className: 'solid-circle', iconSize: [20, 20] }),
-                        interactive: false,
-                        zIndexOffset: 10000
+            if (config) {
+                config.forEach(m => {
+                    L.marker(getOffsetPoint(p1, p2, m.ratio), {
+                        icon: L.divIcon({ className: `marker-icon ${m.cls}`, iconSize: [20, 20] }),
+                        interactive: false
                     }).addTo(map);
                 });
             }
