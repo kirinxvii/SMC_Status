@@ -39,14 +39,13 @@
         };
 
         // 已將 ['WTG28', 'WTG29'] 加入 greenLines
-        const greenLines = [['WTG02','WTG05'],['WTG05','WTG06'],['WTG06','WTG03'],['WTG03','WTG07'],['WTG07','WTG11'],['WTG11','WTG10'],['WTG22','WTG18'],['WTG23','WTG27'],['WTG27','WTG31'],['WTG31','WTG30'],['OSS','WTG10'],['OSS','WTG09'],['WTG28','WTG29']];
+        const greenLines = [['WTG02','WTG05'],['WTG05','WTG06'],['WTG06','WTG03'],['WTG03','WTG07'],['WTG07','WTG11'],['WTG11','WTG10'],['WTG22','WTG18'],['WTG23','WTG27'],['WTG27','WTG31'],['WTG31','WTG30'],['OSS','WTG10'],['OSS','WTG09'],['WTG28','WTG29'],['WTG28','WTG24'];
         const allConnections = [['WTG09','WTG08'],['WTG08','WTG04'],['WTG04','WTG01'],['WTG01','WTG02'],['WTG02','WTG05'],['WTG05','WTG06'],['WTG06','WTG03'],['WTG03','WTG07'],['WTG07','WTG11'],['WTG11','WTG10'],['WTG22','WTG18'],['WTG18','WTG14'],['WTG14','WTG15'],['WTG15','WTG19'],['WTG19','WTG23'],['WTG23','WTG27'],['WTG27','WTG31'],['WTG31','WTG30'],['WTG30','WTG26'],['WTG17','WTG13'],['WTG13','WTG12'],['WTG12','WTG16'],['WTG16','WTG20'],['WTG20','WTG24'],['WTG24','WTG28'],['WTG28','WTG29'],['WTG29','WTG25'],['WTG25','WTG21'],['OSS','WTG10'],['OSS','WTG09'],['OSS','WTG17'],['OSS','WTG21'],['OSS','WTG22'],['OSS','WTG26']];
 
         // 標記設定檔
         const markersConfig = {
-            'WTG24-WTG28': [{ratio: 0.20, cls: 'solid-circle'}, {ratio: 0.80, cls: 'solid-circle'}],
             'WTG20-WTG24': [{ratio: 0.20, cls: 'yellow-circle'}, {ratio: 0.80, cls: 'solid-circle'}],
-            'WTG16-WTG20': [{ratio: 0.80, cls: 'yellow-circle'}]
+            'WTG16-WTG20': [{ratio: 0.20, cls: 'yellow-circle'},{ratio: 0.80, cls: 'yellow-circle'}]
         };
 
         function getOffsetPoint(p1, p2, ratio) {
