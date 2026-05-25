@@ -1,19 +1,32 @@
 <!DOCTYPE html>
 <html>
 <head>
+    <meta charset="UTF-8">
     <title>SMC_Status</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
     <style>
-        #leaflet-map { height: 900px; width: 100%; }
-        .marker-icon { border-radius: 50%; border: 2px solid white; box-shadow: 0 0 5px rgba(0,0,0,0.5); pointer-events: none; }
-        .solid-circle { background-color: #28a745; } /* 綠色 */
-        .yellow-circle { background-color: #ffc107; } /* 黃色 */
+        body { margin: 0; padding: 0; }
+        #leaflet-map { height: 100vh; width: 100%; }
+        
+        /* 藍色定位針樣式 */
+        .marker-icon { 
+            background-color: #007bff; 
+            clip-path: path('M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z');
+            box-shadow: 0 0 3px rgba(0,0,0,0.3);
+        }
+        
+        /* 狀態圈圈樣式 (已縮小) */
+        .status-circle { border-radius: 50%; border: 1.5px solid white; box-shadow: 0 0 3px rgba(0,0,0,0.3); pointer-events: none; }
+        .solid-circle { background-color: #28a745 !important; } /* 綠色 */
+        .yellow-circle { background-color: #ffc107 !important; } /* 黃色 */
     </style>
 </head>
 <body>
     <div id="leaflet-map"></div>
 
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+    
     <script>
         const map = L.map('leaflet-map');
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap' }).addTo(map);
@@ -29,74 +42,53 @@
             "WTG28": [24.1113, 120.2431], "WTG29": [24.0942, 120.2306], "WTG30": [24.0771, 120.2181], "WTG31": [24.0600, 120.2055]
         };
 
-        // 加入 greenLines
-        const greenLines = [['WTG02','WTG05'],['WTG05','WTG06'],
-                            ['WTG06','WTG03'],['WTG03','WTG07'],
-                            ['WTG07','WTG11'],['WTG11','WTG10'],
-                            ['WTG22','WTG18'],['WTG23','WTG27'],
-                            ['WTG27','WTG31'],['WTG31','WTG30'],
-                            ['OSS','WTG10'],['OSS','WTG09'],
-                            ['WTG28','WTG29'],['WTG28','WTG24'],
-                            ['WTG16','WTG20']
-                           ];
-        const allConnections = [['WTG09','WTG08'],['WTG08','WTG04'],
-                                ['WTG04','WTG01'],['WTG01','WTG02'],
-                                ['WTG02','WTG05'],['WTG05','WTG06'],
-                                ['WTG06','WTG03'],['WTG03','WTG07'],
-                                ['WTG07','WTG11'],['WTG11','WTG10'],
-                                ['WTG22','WTG18'],['WTG18','WTG14'],
-                                ['WTG14','WTG15'],['WTG15','WTG19'],
-                                ['WTG19','WTG23'],['WTG23','WTG27'],
-                                ['WTG27','WTG31'],['WTG31','WTG30'],
-                                ['WTG30','WTG26'],['WTG17','WTG13'],
-                                ['WTG13','WTG12'],['WTG12','WTG16'],
-                                ['WTG16','WTG20'],['WTG20','WTG24'],
-                                ['WTG24','WTG28'],['WTG28','WTG29'],
-                                ['WTG29','WTG25'],['WTG25','WTG21'],
-                                ['OSS','WTG10'],['OSS','WTG09'],
-                                ['OSS','WTG17'],['OSS','WTG21'],
-                                ['OSS','WTG22'],['OSS','WTG26']];
-
-        // 設定：'類別名稱': [0.2位置設定, 0.8位置設定]
-        // class 選項: 'solid-circle' (綠), 'yellow-circle' (黃), null (無)
-        const markerStyles = {
-            'default_black': [null, null], // 預設黑虛線設定
-            'WTG20-WTG24': ['solid-circle', 'solid-circle'],
-            'WTG17-WTG13': ['solid-circle', 'yellow-circle'],
-            'WTG16-WTG12': [null, 'solid-circle']
-        };
+        const CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vR0MC7HzAbxdqTrZNqIpaBtcyCIr8gV3vVm2pan8j2QFIlrHP2qzzqDb15LE9EqlrxcxQGuc6vphXDJ/pub?output=csv';
 
         function getOffsetPoint(p1, p2, ratio) {
             return [p1[0] + (p2[0] - p1[0]) * ratio, p1[1] + (p2[1] - p1[1]) * ratio];
         }
 
-        allConnections.forEach(pair => {
-            const isGreen = greenLines.some(g => (g[0] === pair[0] && g[1] === pair[1]) || (g[0] === pair[1] && g[1] === pair[0]));
-            if (isGreen) {
-                L.polyline([points[pair[0]], points[pair[1]]], { color: 'green', weight: 2 }).addTo(map);
-                return;
-            }
+        Papa.parse(CSV_URL + '&t=' + new Date().getTime(), {
+            download: true, header: true,
+            complete: function(results) {
+                // 1. 繪製線條與狀態圈圈
+                results.data.forEach(row => {
+                    if (!row.Key) return;
+                    const pair = row.Key.split('-');
+                    if (!points[pair[0]] || !points[pair[1]]) return;
 
-            // 處理黑虛線
-            L.polyline([points[pair[0]], points[pair[1]]], { color: 'black', weight: 2, dashArray: '5, 10' }).addTo(map);
-            
-            const key = pair.join('-');
-            const reverseKey = pair.slice().reverse().join('-');
-            const styles = markerStyles[key] || markerStyles[reverseKey] || markerStyles['default_black'];
-            const ratios = [0.2, 0.8];
-
-            styles.forEach((cls, index) => {
-                if (cls) {
-                    L.marker(getOffsetPoint(points[pair[0]], points[pair[1]], ratios[index]), {
-                        icon: L.divIcon({ className: `marker-icon ${cls}`, iconSize: [20, 20] }),
-                        interactive: false
+                    L.polyline([points[pair[0]], points[pair[1]]], { 
+                        color: (row.Type === 'green') ? 'green' : 'black', 
+                        weight: 2, 
+                        dashArray: (row.Type === 'green') ? null : '5, 10' 
                     }).addTo(map);
-                }
-            });
-        });
 
-        Object.keys(points).forEach(name => L.marker(points[name]).bindTooltip(name).addTo(map));
-        map.fitBounds(L.latLngBounds(Object.values(points)), { padding: [50, 50] });
+                    [row.Final_Start, row.Final_End].forEach((status, index) => {
+                        let cls = "";
+                        if (status === 'green') cls = 'solid-circle';
+                        else if (status === 'yellow') cls = 'yellow-circle';
+                        
+                        if (cls) {
+                            L.marker(getOffsetPoint(points[pair[0]], points[pair[1]], [0.2, 0.8][index]), {
+                                icon: L.divIcon({ className: `status-circle ${cls}`, iconSize: [15, 15] }), // 縮小至 15x15
+                                interactive: false
+                            }).addTo(map);
+                        }
+                    });
+                });
+
+                // 2. 繪製藍色定位針 (帶 hover 顯示編號)
+                Object.keys(points).forEach(name => {
+                    L.marker(points[name], { 
+                        icon: L.divIcon({ className: 'marker-icon', iconSize: [20, 25], iconAnchor: [10, 25] }) 
+                    })
+                    .bindTooltip(name, { permanent: false, direction: 'top' })
+                    .addTo(map);
+                });
+
+                map.fitBounds(L.latLngBounds(Object.values(points)), { padding: [50, 50] });
+            }
+        });
     </script>
 </body>
 </html>
