@@ -5,16 +5,7 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
     <style>
         #leaflet-map { height: 900px; width: 100%; }
-        
-        /* 標記通用樣式 */
-        .marker-icon { 
-            border-radius: 50%; 
-            border: 2px solid white; 
-            box-shadow: 0 0 5px rgba(0,0,0,0.5); 
-            pointer-events: none; 
-        }
-        
-        /* 圓圈顏色定義 */
+        .marker-icon { border-radius: 50%; border: 2px solid white; box-shadow: 0 0 5px rgba(0,0,0,0.5); pointer-events: none; }
         .solid-circle { background-color: #28a745; } /* 綠色 */
         .yellow-circle { background-color: #ffc107; } /* 黃色 */
     </style>
@@ -66,12 +57,13 @@
                                 ['OSS','WTG17'],['OSS','WTG21'],
                                 ['OSS','WTG22'],['OSS','WTG26']];
 
-        // 標記設定檔
-        const markersConfig = {
+        // 設定：'類別名稱': [0.2位置設定, 0.8位置設定]
+        // class 選項: 'solid-circle' (綠), 'yellow-circle' (黃), null (無)
+        const markerStyles = {
             'default_black': [null, null], // 預設黑虛線設定
-            'WTG20-WTG24': [{ratio: 0.20, cls: 'solid-circle'}, {ratio: 0.80, cls: 'solid-circle'}],
-            'WTG16-WTG12': [{ratio: 0.20, cls: 'solid-circle'}, null],
-            'WTG17-WTG13': [{ratio: 0.20, cls: 'solid-circle'}, {ratio: 0.80, cls: 'yellow-circle'}]
+            'WTG20-WTG24': ['solid-circle', 'solid-circle'],
+            'WTG17-WTG13': ['solid-circle', 'yellow-circle'],
+            'WTG16-WTG12': [null, 'solid-circle']
         };
 
         function getOffsetPoint(p1, p2, ratio) {
