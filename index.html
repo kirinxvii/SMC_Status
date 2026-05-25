@@ -68,8 +68,9 @@
 
         // 標記設定檔
         const markersConfig = {
+            'default_black': [null, null], // 預設黑虛線設定
             'WTG20-WTG24': [{ratio: 0.20, cls: 'solid-circle'}, {ratio: 0.80, cls: 'solid-circle'}],
-            'WTG16-WTG12': [{ratio: 0.20, cls: 'solid-circle'}, {ratio: 0.80, cls: 'solid-circle'}],
+            'WTG16-WTG12': [{ratio: 0.20, cls: 'solid-circle'}, null],
             'WTG17-WTG13': [{ratio: 0.20, cls: 'solid-circle'}, {ratio: 0.80, cls: 'yellow-circle'}]
         };
 
@@ -79,28 +80,27 @@
 
         allConnections.forEach(pair => {
             const isGreen = greenLines.some(g => (g[0] === pair[0] && g[1] === pair[1]) || (g[0] === pair[1] && g[1] === pair[0]));
-            const p1 = points[pair[0]], p2 = points[pair[1]];
+            if (isGreen) {
+                L.polyline([points[pair[0]], points[pair[1]]], { color: 'green', weight: 2 }).addTo(map);
+                return;
+            }
 
-            // 繪製線段
-            L.polyline([p1, p2], {
-                color: isGreen ? 'green' : 'black',
-                weight: 2,
-                dashArray: isGreen ? null : '5, 10'
-            }).addTo(map);
-
-            // 檢查標記設定
+            // 處理黑虛線
+            L.polyline([points[pair[0]], points[pair[1]]], { color: 'black', weight: 2, dashArray: '5, 10' }).addTo(map);
+            
             const key = pair.join('-');
             const reverseKey = pair.slice().reverse().join('-');
-            const config = markersConfig[key] || markersConfig[reverseKey];
+            const styles = markerStyles[key] || markerStyles[reverseKey] || markerStyles['default_black'];
+            const ratios = [0.2, 0.8];
 
-            if (config) {
-                config.forEach(m => {
-                    L.marker(getOffsetPoint(p1, p2, m.ratio), {
-                        icon: L.divIcon({ className: `marker-icon ${m.cls}`, iconSize: [20, 20] }),
+            styles.forEach((cls, index) => {
+                if (cls) {
+                    L.marker(getOffsetPoint(points[pair[0]], points[pair[1]], ratios[index]), {
+                        icon: L.divIcon({ className: `marker-icon ${cls}`, iconSize: [20, 20] }),
                         interactive: false
                     }).addTo(map);
-                });
-            }
+                }
+            });
         });
 
         Object.keys(points).forEach(name => L.marker(points[name]).bindTooltip(name).addTo(map));
