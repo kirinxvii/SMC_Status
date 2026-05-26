@@ -1,32 +1,52 @@
 <!DOCTYPE html>
-<html>
+<html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <title>SMC_Status</title>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+    <title>SMC_Status w/ vessel</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
         body { margin: 0; padding: 0; }
-        #leaflet-map { height: 100vh; width: 100%; }
+        #map-wrapper { position: relative; width: 100%; height: 450px; }
+        .map-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
         
-        /* 藍色定位針樣式 */
-        .marker-icon { 
-            background-color: #007bff; 
+        #leaflet-map { z-index: 1; }
+        #vf-map-container { z-index: 1000; pointer-events: auto; opacity: 0.5; }
+
+        .marker-pin { 
+            background-color: #007bff;
             clip-path: path('M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z');
-            box-shadow: 0 0 3px rgba(0,0,0,0.3);
         }
         
-        /* 狀態圈圈樣式 (已縮小) */
-        .status-circle { border-radius: 50%; border: 1.5px solid white; box-shadow: 0 0 3px rgba(0,0,0,0.3); pointer-events: none; }
-        .solid-circle { background-color: #28a745 !important; } /* 綠色 */
-        .yellow-circle { background-color: #ffc107 !important; } /* 黃色 */
+        .text-label { 
+            font-size: 10px; 
+            font-weight: bold; 
+            color: #004a99; 
+            white-space: nowrap; 
+            pointer-events: none; 
+            text-shadow: 1px 1px 1px white;
+            text-align: center;
+        }
+        
+        .status-circle { border-radius: 50%; border: 1px solid white; box-shadow: 0 0 2px rgba(0,0,0,0.3); pointer-events: none; }
+        .solid-circle { background-color: #28a745 !important; }
+        .yellow-circle { background-color: #ffc107 !important; }
     </style>
 </head>
 <body>
-    <div id="leaflet-map"></div>
+    <div id="map-wrapper">
+        <div class="map-container" id="leaflet-map"></div>
+        <div class="map-container" id="vf-map-container">
+            <script type="text/javascript">
+                var width="100%"; var height="100%"; var latitude="24.095"; var longitude="120.198";
+                var zoom="12"; var names=true; var fleet="bd11a206049a72aa14edad5b5815ee03"; var fleet_name="Pin Pile";
+            </script>
+            <script type="text/javascript" src="https://www.vesselfinder.com/aismap.js"></script>
+        </div>
+    </div>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
-    
+
     <script>
         const map = L.map('leaflet-map');
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap' }).addTo(map);
@@ -51,41 +71,41 @@
         Papa.parse(CSV_URL + '&t=' + new Date().getTime(), {
             download: true, header: true,
             complete: function(results) {
-                // 1. 繪製線條與狀態圈圈
                 results.data.forEach(row => {
                     if (!row.Key) return;
                     const pair = row.Key.split('-');
                     if (!points[pair[0]] || !points[pair[1]]) return;
 
-                    L.polyline([points[pair[0]], points[pair[1]]], { 
-                        color: (row.Type === 'green') ? 'green' : 'black', 
-                        weight: 2, 
-                        dashArray: (row.Type === 'green') ? null : '5, 10' 
-                    }).addTo(map);
+                    L.polyline([points[pair[0]], points[pair[1]]], { color: (row.Type === 'green') ? 'green' : 'black', weight: 2, dashArray: (row.Type === 'green') ? null : '5, 10' }).addTo(map);
 
                     [row.Final_Start, row.Final_End].forEach((status, index) => {
                         let cls = "";
-                        if (status === 'green') cls = 'solid-circle';
-                        else if (status === 'yellow') cls = 'yellow-circle';
-                        
+                        if (status === 'green') cls = 'solid-circle'; else if (status === 'yellow') cls = 'yellow-circle';
                         if (cls) {
                             L.marker(getOffsetPoint(points[pair[0]], points[pair[1]], [0.2, 0.8][index]), {
-                                icon: L.divIcon({ className: `status-circle ${cls}`, iconSize: [15, 15] }), // 縮小至 15x15
-                                interactive: false
+                                icon: L.divIcon({ className: `status-circle ${cls}`, iconSize: [10, 10] }), interactive: false
                             }).addTo(map);
                         }
                     });
                 });
-
-                // 2. 繪製藍色定位針 (帶 hover 顯示編號)
+                
                 Object.keys(points).forEach(name => {
-                    L.marker(points[name], { 
-                        icon: L.divIcon({ className: 'marker-icon', iconSize: [20, 25], iconAnchor: [10, 25] }) 
-                    })
-                    .bindTooltip(name, { permanent: false, direction: 'top' })
-                    .addTo(map);
-                });
+                    let displayName = name.replace(/\D/g, ''); 
+                    if (name === "OSS") displayName = "OSS";
 
+                    // 1. 繪製定位針
+                    L.marker(points[name], { icon: L.divIcon({ className: 'marker-pin', iconSize: [15, 18], iconAnchor: [7.5, 18] }) }).addTo(map);
+                    
+                    // 2. 繪製數字標籤 (定位針下方)
+                    L.marker(points[name], {
+                        icon: L.divIcon({ 
+                            className: 'text-label', 
+                            html: displayName, 
+                            iconSize: [40, 20], 
+                            iconAnchor: [20, -5] // 此處已調整錨點，若覺得太貼近針可以改為正數
+                        })
+                    }).addTo(map);
+                });
                 map.fitBounds(L.latLngBounds(Object.values(points)), { padding: [50, 50] });
             }
         });
