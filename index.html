@@ -18,12 +18,11 @@
         .solid-circle { background-color: #28a745 !important; }
         .yellow-circle { background-color: #ffc107 !important; }
 
-        /* 標籤樣式優化 */
         .label-text {
             font-size: 11px;
             font-weight: bold;
             color: #333;
-            text-shadow: 0px 0px 4px white, 0px 0px 4px white; /* 增加文字白邊，提升清晰度 */
+            text-shadow: 0px 0px 4px white, 0px 0px 4px white;
             white-space: nowrap;
             display: flex;
             justify-content: center;
@@ -54,36 +53,52 @@
 
         const CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vR0MC7HzAbxdqTrZNqIpaBtcyCIr8gV3vVm2pan8j2QFIlrHP2qzzqDb15LE9EqlrxcxQGuc6vphXDJ/pub?output=csv';
 
-        // 繪圖邏輯保持不變
+        function getOffsetPoint(p1, p2, ratio) {
+            return [p1[0] + (p2[0] - p1[0]) * ratio, p1[1] + (p2[1] - p1[1]) * ratio];
+        }
+
         Papa.parse(CSV_URL + '&t=' + new Date().getTime(), {
             download: true, header: true,
             complete: function(results) {
-                // ... (連線與狀態圈圈程式碼相同，略過以節省篇幅) ...
+                // 1. 繪製連線與狀態圈圈
                 results.data.forEach(row => {
                     if (!row.Key) return;
                     const pair = row.Key.split('-');
                     if (!points[pair[0]] || !points[pair[1]]) return;
-                    L.polyline([points[pair[0]], points[pair[1]]], { color: (row.Type === 'green') ? 'green' : 'black', weight: 2, dashArray: (row.Type === 'green') ? null : '5, 10' }).addTo(map);
+
+                    L.polyline([points[pair[0]], points[pair[1]]], { 
+                        color: (row.Type === 'green') ? 'green' : 'black', 
+                        weight: 2, 
+                        dashArray: (row.Type === 'green') ? null : '5, 10' 
+                    }).addTo(map);
+
+                    [row.Final_Start, row.Final_End].forEach((status, index) => {
+                        let cls = "";
+                        if (status === 'green') cls = 'solid-circle';
+                        else if (status === 'yellow') cls = 'yellow-circle';
+                        
+                        if (cls) {
+                            L.marker(getOffsetPoint(points[pair[0]], points[pair[1]], [0.2, 0.8][index]), {
+                                icon: L.divIcon({ className: `status-circle ${cls}`, iconSize: [15, 15] }),
+                                interactive: false
+                            }).addTo(map);
+                        }
+                    });
                 });
 
-                // 優化後的標籤定位
+                // 2. 繪製定位針與優化後的編號
                 Object.keys(points).forEach(name => {
-                    // 1. 風機圖示
                     L.marker(points[name], { 
                         icon: L.divIcon({ className: 'marker-icon', iconSize: [20, 25], iconAnchor: [10, 25] }) 
                     }).addTo(map);
 
-                    // 2. 文字標籤定位參數設定
-                    let anchor, offset;
+                    let anchor;
                     if (name === 'OSS') {
-                        anchor = [0, 12]; // OSS: 右側，垂直置中
-                        offset = [10, 0];
+                        anchor = [0, 12]; // 右側偏移
                     } else if (points[name][0] > 24.095) {
-                        anchor = [10, 35]; // 上方: 向上移 25px (35-10)
-                        offset = [0, 0];
+                        anchor = [10, 35]; // 上方偏移
                     } else {
-                        anchor = [10, -5]; // 下方: 向下移 10px ((-5)-(-15))
-                        offset = [0, 0];
+                        anchor = [10, -5]; // 下方偏移
                     }
 
                     L.marker(points[name], {
@@ -96,6 +111,7 @@
                         interactive: false
                     }).addTo(map);
                 });
+
                 map.fitBounds(L.latLngBounds(Object.values(points)), { padding: [50, 50] });
             }
         });
