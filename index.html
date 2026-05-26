@@ -8,17 +8,27 @@
         body { margin: 0; padding: 0; }
         #leaflet-map { height: 100vh; width: 100%; }
         
-        /* 藍色定位針樣式 */
         .marker-icon { 
             background-color: #007bff; 
             clip-path: path('M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z');
             box-shadow: 0 0 3px rgba(0,0,0,0.3);
         }
         
-        /* 狀態圈圈樣式 (已縮小) */
         .status-circle { border-radius: 50%; border: 1.5px solid white; box-shadow: 0 0 3px rgba(0,0,0,0.3); pointer-events: none; }
-        .solid-circle { background-color: #28a745 !important; } /* 綠色 */
-        .yellow-circle { background-color: #ffc107 !important; } /* 黃色 */
+        .solid-circle { background-color: #28a745 !important; }
+        .yellow-circle { background-color: #ffc107 !important; }
+
+        .label-text {
+            font-size: 11px;
+            font-weight: bold;
+            color: #333;
+            text-align: center;
+            text-shadow: 1px 1px 2px white;
+            white-space: nowrap;
+        }
+        .label-top { transform: translateY(-38px); }
+        .label-bottom { transform: translateY(8px); }
+        .label-right { transform: translate(15px, -15px); }
     </style>
 </head>
 <body>
@@ -51,7 +61,7 @@
         Papa.parse(CSV_URL + '&t=' + new Date().getTime(), {
             download: true, header: true,
             complete: function(results) {
-                // 1. 繪製線條與狀態圈圈
+                // 1. 繪製連線與狀態圈圈
                 results.data.forEach(row => {
                     if (!row.Key) return;
                     const pair = row.Key.split('-');
@@ -70,20 +80,31 @@
                         
                         if (cls) {
                             L.marker(getOffsetPoint(points[pair[0]], points[pair[1]], [0.2, 0.8][index]), {
-                                icon: L.divIcon({ className: `status-circle ${cls}`, iconSize: [15, 15] }), // 縮小至 15x15
+                                icon: L.divIcon({ className: `status-circle ${cls}`, iconSize: [15, 15] }),
                                 interactive: false
                             }).addTo(map);
                         }
                     });
                 });
 
-                // 2. 繪製藍色定位針 (帶 hover 顯示編號)
+                // 2. 繪製定位針與編號
                 Object.keys(points).forEach(name => {
                     L.marker(points[name], { 
                         icon: L.divIcon({ className: 'marker-icon', iconSize: [20, 25], iconAnchor: [10, 25] }) 
-                    })
-                    .bindTooltip(name, { permanent: false, direction: 'top' })
-                    .addTo(map);
+                    }).addTo(map);
+
+                    let labelClass = "label-bottom";
+                    if (name === 'OSS') labelClass = "label-right";
+                    else if (points[name][0] > 24.095) labelClass = "label-top";
+
+                    L.marker(points[name], {
+                        icon: L.divIcon({
+                            className: `label-text ${labelClass}`,
+                            html: name.replace('WTG', ''), // 移除 WTG，僅保留數字
+                            iconSize: [40, 20]
+                        }),
+                        interactive: false
+                    }).addTo(map);
                 });
 
                 map.fitBounds(L.latLngBounds(Object.values(points)), { padding: [50, 50] });
