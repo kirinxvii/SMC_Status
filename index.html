@@ -8,19 +8,17 @@
         body { margin: 0; padding: 0; }
         #leaflet-map { height: 100vh; width: 100%; }
         
-        /* 藍色定位針 */
         .marker-icon { 
             background-color: #007bff; 
             clip-path: path('M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z');
             box-shadow: 0 0 3px rgba(0,0,0,0.3);
         }
         
-        /* 狀態圈圈 */
         .status-circle { border-radius: 50%; border: 1.5px solid white; box-shadow: 0 0 3px rgba(0,0,0,0.3); pointer-events: none; }
         .solid-circle { background-color: #28a745 !important; }
         .yellow-circle { background-color: #ffc107 !important; }
 
-        /* 風機編號文字樣式 */
+        /* 編號文字樣式 */
         .label-text {
             font-size: 11px;
             font-weight: bold;
@@ -29,8 +27,9 @@
             text-shadow: 1px 1px 2px white;
             white-space: nowrap;
         }
-        .label-top { transform: translateY(-35px); }    /* 定位針上方 */
-        .label-bottom { transform: translateY(5px); }  /* 定位針下方 */
+        .label-top { transform: translateY(-38px); }    /* 上排更往上 */
+        .label-bottom { transform: translateY(8px); }   /* 下排更往下 */
+        .label-right { transform: translate(15px, -15px); } /* OSS 右方 */
     </style>
 </head>
 <body>
@@ -56,54 +55,31 @@
 
         const CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vR0MC7HzAbxdqTrZNqIpaBtcyCIr8gV3vVm2pan8j2QFIlrHP2qzzqDb15LE9EqlrxcxQGuc6vphXDJ/pub?output=csv';
 
-        function getOffsetPoint(p1, p2, ratio) {
-            return [p1[0] + (p2[0] - p1[0]) * ratio, p1[1] + (p2[1] - p1[1]) * ratio];
-        }
-
         Papa.parse(CSV_URL + '&t=' + new Date().getTime(), {
             download: true, header: true,
             complete: function(results) {
-                // 1. 繪製線條與狀態圈圈
+                // 1. 繪製連線 (同原邏輯)
                 results.data.forEach(row => {
                     if (!row.Key) return;
                     const pair = row.Key.split('-');
                     if (!points[pair[0]] || !points[pair[1]]) return;
-
-                    L.polyline([points[pair[0]], points[pair[1]]], { 
-                        color: (row.Type === 'green') ? 'green' : 'black', 
-                        weight: 2, 
-                        dashArray: (row.Type === 'green') ? null : '5, 10' 
-                    }).addTo(map);
-
-                    [row.Final_Start, row.Final_End].forEach((status, index) => {
-                        let cls = "";
-                        if (status === 'green') cls = 'solid-circle';
-                        else if (status === 'yellow') cls = 'yellow-circle';
-                        
-                        if (cls) {
-                            L.marker(getOffsetPoint(points[pair[0]], points[pair[1]], [0.2, 0.8][index]), {
-                                icon: L.divIcon({ className: `status-circle ${cls}`, iconSize: [15, 15] }),
-                                interactive: false
-                            }).addTo(map);
-                        }
-                    });
+                    L.polyline([points[pair[0]], points[pair[1]]], { color: (row.Type === 'green') ? 'green' : 'black', weight: 2, dashArray: (row.Type === 'green') ? null : '5, 10' }).addTo(map);
                 });
 
-                // 2. 繪製藍色定位針與編號
+                // 2. 繪製定位針與標籤
                 Object.keys(points).forEach(name => {
-                    // 自動判斷位置：緯度 > 24.095 為上排，其餘為下排
-                    const isTop = points[name][0] > 24.095;
-
-                    // 繪製定位針
                     L.marker(points[name], { 
                         icon: L.divIcon({ className: 'marker-icon', iconSize: [20, 25], iconAnchor: [10, 25] }) 
                     }).addTo(map);
 
-                    // 繪製編號文字
+                    let labelClass = "label-bottom"; // 預設下方
+                    if (name === 'OSS') labelClass = "label-right";
+                    else if (points[name][0] > 24.095) labelClass = "label-top";
+
                     L.marker(points[name], {
                         icon: L.divIcon({
-                            className: `label-text ${isTop ? 'label-top' : 'label-bottom'}`,
-                            html: name,
+                            className: `label-text ${labelClass}`,
+                            html: name.replace('WTG', ''), // 僅顯示數字
                             iconSize: [40, 20]
                         }),
                         interactive: false
